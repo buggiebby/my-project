@@ -88,9 +88,19 @@ WSGI_APPLICATION = 'ai_blog.wsgi.application'
 import dj_database_url
 import os
 
-DATABASES = {
-    'default': dj_database_url.config(default=os.environ.get("DATABASE_URL"))
-}
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        'default': dj_database_url.config(default=os.environ.get("DATABASE_URL"))
+    }
+else:
+    # Fallback for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / "db.sqlite3",
+        }
+    }
+
 
 
 
