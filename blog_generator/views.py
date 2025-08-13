@@ -11,10 +11,10 @@ def user_login(request):
 
 def user_signup(request):
     if request.method =='POST':
-        username= request.POST('username'),
-        Password= request.POST('Password'),
-        Email= request.POST('Email'),
-        RepeatPassword= request.POST('RepeatPassword')
+        username= request.POST['username']
+        Password= request.POST['Password']
+        Email= request.POST['Email']
+        RepeatPassword= request.POST['RepeatPassword']
 
         if Password == RepeatPassword:
             try:
