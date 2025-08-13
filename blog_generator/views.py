@@ -12,13 +12,13 @@ def user_login(request):
 def user_signup(request):
     if request.method =='POST':
         username= request.POST['username']
-        Password= request.POST['Password']
-        Email= request.POST['Email']
-        RepeatPassword= request.POST['RepeatPassword']
+        password= request.POST['password']
+        email= request.POST['email']
+        repeatPassword= request.POST['repeatPassword']
 
-        if Password == RepeatPassword:
+        if password == repeatPassword:
             try:
-                user = User.objects.create_user(username,Email,Password)
+                user = User.objects.create_user(username,email,password)
                 user.save()
                 login(request,user)
                 return redirect('/')
