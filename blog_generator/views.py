@@ -5,7 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
-from pytube import youtube
+from pytube import YouTube
+
 
 
 # Create your views here.
@@ -39,7 +40,10 @@ def generate_blog (request):
      return JsonResponse({'error_message':'Invalid request method '}, status=405)
        
     
-
+def yt_title(link):
+    yt = YouTube(link)
+    title =yt.title
+    return title
 
 
 
