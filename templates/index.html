@@ -65,7 +65,7 @@
 <br>
 <!--Main-->
 
-<div class="flex-grow container mx-Auto mt-10 sm:px-0">
+<div class="flex-grow container mx-auto mt-10 sm:px-0">
     <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-lg transition-transform transform hover:scale-105 flex flex-col ">
         <!--Introduction-->
 
@@ -126,26 +126,29 @@
                 blogContent.innerHTML = ''; // Clear previous content
 
                 const endpointUrl = '/generate-blog';
+
                 
                 try {
                     const response = await fetch(endpointUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ link: youtubeLink })
                     });
 
                     const data = await response.json();
 
-                    blogContent.innerHTML = data.content;
-
+                    if (data.content) {
+                        blogContent.innerHTML = data.content;
+                    } else if (data.error || data.error_message) {
+                        blogContent.innerHTML = `<p class="text-red-500">${data.error || data.error_message}</p>`;
+                    }
                 } catch (error) {
                     console.error("Error occurred:", error);
                     alert("Something went wrong. Please try again later.");
-                    
+                } finally {
+                    document.getElementById('loading-circle').style.display = 'none';
                 }
-                document.getElementById('loading-circle').style.display = 'none';
+
             } else {
                 alert("Please enter a YouTube link.");
             }

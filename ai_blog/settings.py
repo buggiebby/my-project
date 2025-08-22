@@ -87,6 +87,7 @@ WSGI_APPLICATION = 'ai_blog.wsgi.application'
 
 import dj_database_url
 import os
+from dotenv import load_dotenv
 
 if os.environ.get("DATABASE_URL"):
     DATABASES = {
@@ -159,3 +160,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 LOGIN_URL= 'login'
+
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

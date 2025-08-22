@@ -19,40 +19,42 @@ def index(request):
     return render(request, 'index.html')
 
 @csrf_exempt
-def generate_blog (request):
+def generate_blog(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            yt_link=data ['link']
-            
-            
-        except(KeyError, json.JSONDecodeError):
-            return JsonResponse({'error_message':'Invalid data sent'}, status=400) 
-        
-        
-        #get title
-        title =yt_title(yt_link)
-    
-        #get transcript
-        transcription = get_transcription(yt_link)
-        if not transcription:
-            return JsonResponse({'error': "Failed to get transcript"}, status=500)
-        
+            yt_link = data['link']
+        except (KeyError, json.JSONDecodeError):
+            return JsonResponse({'error_message': 'Invalid data sent'}, status=400)
 
-        #use openai to generate the blog
-        blog_content= generate_blog_from_transcription(transcription)
-        if not blog_content:
-            return JsonResponse({'error':"Failed to generate blog article"}, status=500)
+        try:
+            # Step 1: Get title
+            title = yt_title(yt_link)
+            print("✅ Got video title:", title)
 
-        #save blg article to database
+            # Step 2: Get transcription
+            transcription = get_transcription(yt_link)
+            if not transcription:
+                print("❌ Transcription failed")
+                return JsonResponse({'error': "Failed to get transcript"}, status=500)
+            print("✅ Got transcription")
 
-        #return blog article as response
-        return JsonResponse({'content': blog_content})
+            # Step 3: Generate blog
+            blog_content = generate_blog_from_transcription(transcription)
+            if not blog_content:
+                print("❌ Blog generation failed")
+                return JsonResponse({'error': "Failed to generate blog article"}, status=500)
+            print("✅ Blog generated")
 
-    else:
+            return JsonResponse({'content': blog_content})
 
-     return JsonResponse({'error_message':'Invalid request method '}, status=405)
-       
+        except Exception as e:
+            import traceback
+            print("❌ Error in generate_blog:", str(e))
+            traceback.print_exc()
+            return JsonResponse({'error': f"Server error: {str(e)}"}, status=500)
+
+    return JsonResponse({'error_message': 'Invalid request method'}, status=405)
     
 def yt_title(link):
     yt = YouTube(link)
@@ -62,40 +64,74 @@ def yt_title(link):
 
 
 def download_audio(link):
-    yt =YouTube(link)
-    video =yt.streams.filter(only_audio=True).first()
-    out_file = video.download(output_path=settings.MEDIA_ROOT)
-    base, ext =os.path.splitext(out_file)
-    new_file = base + '.mp3'
-    os.rename(out_file, new_file)
-    return new_file
+    try:
+        yt = YouTube(link)
+        video = yt.streams.filter(only_audio=True).first()
+        out_file = video.download(output_path=settings.MEDIA_ROOT)
+        base, ext = os.path.splitext(out_file)
+        new_file = base + '.mp3'
+        os.rename(out_file, new_file)
+        return new_file
+    except Exception as e:
+        print("Download failed:", e)
+        return None
+
 
 
 
 def get_transcription(link):
-    audio_file= download_audio(link)
-    aai.settings.api_key="8c96937ba2cf4976a320c05a9580291d"
-    
-    transcriber =aai.Transcriber()
-    transcript = transcriber.transcribe(audio_file)
-    return transcriber.text
+    audio_file = download_audio(link)
+    if not audio_file:
+        return None
+    aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
+    try:
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_file)
+        return transcript.text
+    except Exception as e:
+        print("Transcription failed:", e)
+        return None
 
 
-    
+
 def generate_blog_from_transcription(transcription):
-    openai.api_key ='PLACEHOLDER_KEY'
+    # use the key from settings, not hardcoded
+    openai.api_key = settings.OPENAI_API_KEY
     
-    prompt=f"Based on the following transcript from a youtube video, write a comprehensive blog article, write it based on the transcript,but dont make it sound like a youtube video, make it look like a proper blog:\n\n{transcription}\n\nArticle:"
+    prompt = (
+        f"Based on the following transcript from a YouTube video, "
+        f"write a comprehensive blog article. Write it based on the transcript, "
+        f"but don’t make it sound like a YouTube video—make it look like a proper blog:\n\n"
+        f"{transcription}\n\nArticle:"
+    )
 
-    response =openai.completions.create(
-
+    response = openai.Completion.create(
+  # note: it's Completion, not completions
         model="text-davinci-003",
         prompt=prompt,
         max_tokens=1000
     )
 
-    generated_content=response.choices[0].text.strip()
+    generated_content = response.choices[0].text.strip()
     return generated_content
+
+    
+#def generate_blog_from_transcription(transcription):
+    #openai.api_key ='PLACEHOLDER_KEY'
+    
+    #prompt=f"Based on the following transcript from a youtube video, write a comprehensive blog article, write it based on the transcript,but dont make it sound like a youtube video, make it look like a proper blog:\n\n{transcription}\n\nArticle:"
+
+    #response =openai.completions.create(
+
+       # model="text-davinci-003",
+       # prompt=prompt,
+       # max_tokens=1000
+   # )
+
+    #generated_content=response.choices[0].text.strip()
+    #return generated_content
+
+    
 
 def user_login(request):
     if request.method =='POST':
