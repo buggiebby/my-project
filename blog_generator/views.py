@@ -13,7 +13,7 @@ import openai
 import re
 import requests
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
-
+import time 
 
 
 # Create your views here.
