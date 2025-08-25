@@ -10,6 +10,7 @@ from pytube import YouTube
 import os
 import assemblyai as aai
 import openai
+import re
 
 
 
@@ -18,19 +19,33 @@ import openai
 def index(request):
     return render(request, 'index.html')
 
+YT_REGEX = re.compile(r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/.+')
+
 @csrf_exempt
 def generate_blog(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            yt_link = data['link']
+            yt_link = data.get('link', '').strip()
+
+            # Validate the link
+            if not yt_link or not YT_REGEX.match(yt_link):
+                return JsonResponse({'error': 'Invalid YouTube link'}, status=400)
+
         except (KeyError, json.JSONDecodeError):
-            return JsonResponse({'error_message': 'Invalid data sent'}, status=400)
+            return JsonResponse({'error_message':'Invalid data sent'}, status=400) 
 
         try:
             # Step 1: Get title
+            print("DEBUG yt_link:", yt_link)
             title = yt_title(yt_link)
             print("✅ Got video title:", title)
+
+            if not title:   # this checks for None OR empty string
+                return JsonResponse(
+                    {'error': "Could not fetch YouTube title"},
+                        status=400
+                )
 
             # Step 2: Get transcription
             transcription = get_transcription(yt_link)
@@ -57,9 +72,12 @@ def generate_blog(request):
     return JsonResponse({'error_message': 'Invalid request method'}, status=405)
     
 def yt_title(link):
-    yt = YouTube(link)
-    title =yt.title
-    return title
+    try:
+        yt = YouTube(link)
+        return yt.title
+    except Exception as e:
+        print("yt_title error:", e)
+        return None
 
 
 
@@ -91,6 +109,8 @@ def get_transcription(link):
     except Exception as e:
         print("Transcription failed:", e)
         return None
+
+print("DEBUG AssemblyAI Key:", settings.ASSEMBLYAI_API_KEY)
 
 
 
