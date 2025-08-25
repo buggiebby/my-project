@@ -118,18 +118,24 @@ def get_transcription(link):
     aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
 
     try:
-        # Step 3: Send file path directly
+        # Step 3: Submit job
         transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_file)  # no open(), just path
+        transcript = transcriber.transcribe(audio_file, poll=False)  # don't wait automatically
 
-        # Step 4: Check transcript result
-        if transcript and transcript.status == "completed":
+        print("⏳ Transcript job submitted, id:", transcript.id)
+
+        # Step 4: Poll until complete
+        while transcript.status not in ("completed", "error"):
+            print("⌛ Status:", transcript.status)
+            time.sleep(5)  # wait 5 sec
+            transcript = transcriber.get_transcription(transcript.id)
+
+        # Step 5: Handle result
+        if transcript.status == "completed":
+            print("✅ Transcript ready!")
             return transcript.text
-        elif transcript and transcript.error:
-            print("❌ AssemblyAI error:", transcript.error)
-            return None
         else:
-            print("⏳ Transcript still processing")
+            print("❌ AssemblyAI error:", transcript.error)
             return None
 
     except Exception as e:
