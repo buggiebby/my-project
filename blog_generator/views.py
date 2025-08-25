@@ -118,21 +118,24 @@ def get_transcription(link):
     aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
 
     try:
-        # Step 3: Use file handle, not just file path
+        # Step 3: Send file path directly
         transcriber = aai.Transcriber()
-        with open(audio_file, "rb") as f:
-            transcript = transcriber.transcribe(f)
+        transcript = transcriber.transcribe(audio_file)  # no open(), just path
 
         # Step 4: Check transcript result
-        if transcript and transcript.text:
+        if transcript and transcript.status == "completed":
             return transcript.text
+        elif transcript and transcript.error:
+            print("❌ AssemblyAI error:", transcript.error)
+            return None
         else:
-            print("❌ Transcript came back empty")
+            print("⏳ Transcript still processing")
             return None
 
     except Exception as e:
         print("❌ Transcription failed:", e)
         return None
+
 
 print("DEBUG AssemblyAI Key:", settings.ASSEMBLYAI_API_KEY)
 
