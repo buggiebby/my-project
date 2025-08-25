@@ -12,6 +12,7 @@ import assemblyai as aai
 import openai
 import re
 import requests
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
 
 
 
@@ -107,16 +108,30 @@ def download_audio(link):
 
 
 def get_transcription(link):
+    # Step 1: Download audio
     audio_file = download_audio(link)
     if not audio_file:
+        print("❌ Failed to download audio")
         return None
+
+    # Step 2: Set API key
     aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
+
     try:
+        # Step 3: Use file handle, not just file path
         transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_file)
-        return transcript.text
+        with open(audio_file, "rb") as f:
+            transcript = transcriber.transcribe(f)
+
+        # Step 4: Check transcript result
+        if transcript and transcript.text:
+            return transcript.text
+        else:
+            print("❌ Transcript came back empty")
+            return None
+
     except Exception as e:
-        print("Transcription failed:", e)
+        print("❌ Transcription failed:", e)
         return None
 
 print("DEBUG AssemblyAI Key:", settings.ASSEMBLYAI_API_KEY)
