@@ -78,7 +78,9 @@ def yt_title(link):
         print("✅ Successfully created YouTube object")
         return yt.title
     except Exception as e:
+        import traceback
         print("❌ yt_title error:", e)
+        traceback.print_exc()   # <-- this prints full error details
         return None
 
 
