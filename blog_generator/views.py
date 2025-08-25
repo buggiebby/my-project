@@ -73,10 +73,12 @@ def generate_blog(request):
     
 def yt_title(link):
     try:
+        print("🔎 Trying to fetch YouTube title for:", link)
         yt = YouTube(link)
+        print("✅ Successfully created YouTube object")
         return yt.title
     except Exception as e:
-        print("yt_title error:", e)
+        print("❌ yt_title error:", e)
         return None
 
 
