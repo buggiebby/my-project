@@ -25,53 +25,32 @@ YT_REGEX = re.compile(r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/.+')
 
 @csrf_exempt
 def generate_blog(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            yt_link = data.get('link', '').strip()
+            yt_link = data.get("yt_link")
 
-            # Validate the link
-            if not yt_link or not YT_REGEX.match(yt_link):
-                return JsonResponse({'error': 'Invalid YouTube link'}, status=400)
-
-        except (KeyError, json.JSONDecodeError):
-            return JsonResponse({'error_message':'Invalid data sent'}, status=400) 
-
-        try:
             # Step 1: Get title
             print("DEBUG yt_link:", yt_link)
             title = yt_title(yt_link)
-            print("✅ Got video title:", title)
-
-            if not title:   # this checks for None OR empty string
-                return JsonResponse(
-                    {'error': "Could not fetch YouTube title"},
-                        status=400
-                )
+            if not title:
+                return JsonResponse({'error': "Could not fetch YouTube title"}, status=400)
 
             # Step 2: Get transcription
             transcription = get_transcription(yt_link)
             if not transcription:
-                print("❌ Transcription failed")
-                return JsonResponse({'error': "Failed to get transcript"}, status=500)
-            print("✅ Got transcription")
+                return JsonResponse({'error': "Failed to get transcript"}, status=400)
 
-            # Step 3: Generate blog
-            blog_content = generate_blog_from_transcription(transcription)
-            if not blog_content:
-                print("❌ Blog generation failed")
-                return JsonResponse({'error': "Failed to generate blog article"}, status=500)
-            print("✅ Blog generated")
+            # Step 3: Generate blog with title + transcript
+            blog_content = generate_blog_from_transcription(title, transcription)
 
-            return JsonResponse({'content': blog_content})
+            return JsonResponse({'title': title, 'blog': blog_content}, status=200)
 
         except Exception as e:
-            import traceback
-            print("❌ Error in generate_blog:", str(e))
-            traceback.print_exc()
-            return JsonResponse({'error': f"Server error: {str(e)}"}, status=500)
+            print("❌ Error in generate_blog:", e)
+            return JsonResponse({'error': str(e)}, status=500)
 
-    return JsonResponse({'error_message': 'Invalid request method'}, status=405)
+    return JsonResponse({'error': "Invalid request method"}, status=405)
     
 def yt_title(link):
     try:
@@ -91,82 +70,83 @@ def yt_title(link):
 
 
 
+
 def download_audio(link):
     try:
         yt = YouTube(link)
-        video = yt.streams.filter(only_audio=True).first()
-        out_file = video.download(output_path=settings.MEDIA_ROOT)
-        base, ext = os.path.splitext(out_file)
-        new_file = base + '.mp3'
-        os.rename(out_file, new_file)
-        return new_file
+        audio_stream = yt.streams.filter(only_audio=True).first()
+        if not audio_stream:
+            print("❌ No audio stream found")
+            return None
+
+        # Ensure media folder exists
+        media_root = getattr(settings, "MEDIA_ROOT", "media")
+        os.makedirs(media_root, exist_ok=True)
+
+        file_path = audio_stream.download(output_path=media_root, filename="yt_audio.mp3")
+        print("✅ Audio downloaded to:", file_path)
+        return file_path
+
     except Exception as e:
-        print("Download failed:", e)
+        print("❌ Audio download failed:", e)
         return None
 
 
 
 
 def get_transcription(link):
-    # Step 1: Download audio
     audio_file = download_audio(link)
     if not audio_file:
         print("❌ Failed to download audio")
         return None
+    
+    return get_transcription_from_file(audio_file)
 
-    # Step 2: Set API key
+
+
+
+def get_transcription_from_file(audio_path):
+    import assemblyai as aai
+    from django.conf import settings
+
     aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
+    transcriber = aai.Transcriber()
+    transcript = transcriber.transcribe(audio_path)
 
-    try:
-        # Step 3: Submit job
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_file, poll=False)  # don't wait automatically
-
-        print("⏳ Transcript job submitted, id:", transcript.id)
-
-        # Step 4: Poll until complete
-        while transcript.status not in ("completed", "error"):
-            print("⌛ Status:", transcript.status)
-            time.sleep(5)  # wait 5 sec
-            transcript = transcriber.get_transcription(transcript.id)
-
-        # Step 5: Handle result
-        if transcript.status == "completed":
-            print("✅ Transcript ready!")
-            return transcript.text
-        else:
-            print("❌ AssemblyAI error:", transcript.error)
-            return None
-
-    except Exception as e:
-        print("❌ Transcription failed:", e)
+    if transcript and transcript.text:
+        print("✅ Transcript (preview):", transcript.text[:200])  # show first 200 chars
+        return transcript.text
+    else:
+        print("❌ Transcript failed:", transcript.error if transcript else "No response")
         return None
+    
+    #python manage.py shell
 
+    #from blog_generator.views import get_transcription_from_file
+    #get_transcription_from_file("media/test.mp3")
+    #in the terminal
 
-print("DEBUG AssemblyAI Key:", settings.ASSEMBLYAI_API_KEY)
-
-
+from openai import OpenAI
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def generate_blog_from_transcription(transcription):
-    # use the key from settings, not hardcoded
-    openai.api_key = settings.OPENAI_API_KEY
-    
     prompt = (
         f"Based on the following transcript from a YouTube video, "
-        f"write a comprehensive blog article. Write it based on the transcript, "
-        f"but don’t make it sound like a YouTube video—make it look like a proper blog:\n\n"
-        f"{transcription}\n\nArticle:"
+        f"write a comprehensive blog article. Make it engaging, structured, "
+        f"and SEO-friendly:\n\n{transcription}\n\nArticle:"
     )
 
-    response = openai.Completion.create(
-  # note: it's Completion, not completions
-        model="text-davinci-003",
-        prompt=prompt,
-        max_tokens=1000
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a professional blog writer."},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=1000,
+        temperature=0.7
     )
 
-    generated_content = response.choices[0].text.strip()
-    return generated_content
+    return response.choices[0].message.content.strip()
 
     
 #def generate_blog_from_transcription(transcription):
