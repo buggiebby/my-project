@@ -14,6 +14,7 @@ import re
 import requests
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
 import time 
+from openai import OpenAI
 
 
 # Create your views here.
@@ -127,7 +128,7 @@ def get_transcription_from_file(audio_path):
     #in the terminal
 
 from openai import OpenAI
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+client = OpenAI()
 
 def generate_blog_from_transcription(transcription):
     prompt = (
