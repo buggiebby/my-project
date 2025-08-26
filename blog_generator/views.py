@@ -15,6 +15,7 @@ import requests
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
 import time 
 from openai import OpenAI
+import yt_dlp
 
 
 # Create your views here.
@@ -22,14 +23,19 @@ from openai import OpenAI
 def index(request):
     return render(request, 'index.html')
 
-YT_REGEX = re.compile(r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/.+')
+YT_REGEX = re.compile(r'^(https?\:\/\/)?(www\.|m\.)?(youtube\.com|youtu\.be)\/.+$')
 
 @csrf_exempt
 def generate_blog(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            yt_link = data.get("yt_link")
+            yt_link = data.get("yt_link") or data.get("link")
+
+            print("DEBUG received link:", yt_link)
+            # Step 0: Validate link
+            if not yt_link or not YT_REGEX.match(yt_link):
+                return JsonResponse({'error': "Invalid YouTube link"}, status=400)
 
             # Step 1: Get title
             print("DEBUG yt_link:", yt_link)
@@ -42,8 +48,8 @@ def generate_blog(request):
             if not transcription:
                 return JsonResponse({'error': "Failed to get transcript"}, status=400)
 
-            # Step 3: Generate blog with title + transcript
-            blog_content = generate_blog_from_transcription(title, transcription)
+            # Step 3: Generate blog with transcript only (your function only takes transcription)
+            blog_content = generate_blog_from_transcription(transcription)
 
             return JsonResponse({'title': title, 'blog': blog_content}, status=200)
 
@@ -55,36 +61,38 @@ def generate_blog(request):
     
 def yt_title(link):
     try:
-        print("🔎 Fetching YouTube title for:", link)
-        oembed_url = f"https://www.youtube.com/oembed?url={link}&format=json"
-        response = requests.get(oembed_url)
-        if response.status_code == 200:
-            return response.json().get("title")
-        else:
-            print("❌ oEmbed error:", response.text)
-            return None
+        oembed_url = "https://www.youtube.com/oembed"
+        params = {"url": link, "format": "json"}
+        response = requests.get(oembed_url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("title")
     except Exception as e:
-        print("❌ yt_title exception:", e)
+        print("❌ yt_title error:", e)
         return None
+
 
 
 
 
 def download_audio(link):
     try:
-        yt = YouTube(link)
-        audio_stream = yt.streams.filter(only_audio=True).first()
-        if not audio_stream:
-            print("❌ No audio stream found")
-            return None
-
-        # Ensure media folder exists
         media_root = getattr(settings, "MEDIA_ROOT", "media")
         os.makedirs(media_root, exist_ok=True)
 
-        file_path = audio_stream.download(output_path=media_root, filename="yt_audio.mp3")
-        print("✅ Audio downloaded to:", file_path)
-        return file_path
+        output_path = os.path.join(media_root, "yt_audio.%(ext)s")
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": output_path,
+            "quiet": True,
+            "noplaylist": True
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(link, download=True)
+            file_path = os.path.join(media_root, f"yt_audio.{info['ext']}")
+            print("✅ Audio downloaded to:", file_path)
+            return file_path
 
     except Exception as e:
         print("❌ Audio download failed:", e)
