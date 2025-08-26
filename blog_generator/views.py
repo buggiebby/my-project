@@ -58,7 +58,7 @@ def yt_title(link):
         print("🔎 Trying to fetch YouTube title for:", link)
         # Use YouTube oEmbed endpoint
         oembed_url = f"https://www.youtube.com/oembed?url={link}&format=json"
-        response = requests.get(oembed_url)
+        response = requests.get(oembed_url, timeout=10)
         if response.status_code == 200:
             data = response.json()
             return data.get("title")

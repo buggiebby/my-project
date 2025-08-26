@@ -161,6 +161,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 LOGIN_URL= 'login'
 
+# Base directory
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
