@@ -56,17 +56,13 @@ def generate_blog(request):
 def yt_title(link):
     try:
         print("🔎 Trying to fetch YouTube title for:", link)
-        # Use YouTube oEmbed endpoint
-        oembed_url = f"https://www.youtube.com/oembed?url={link}&format=json"
-        response = requests.get(oembed_url, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("title")
-        else:
-            print("❌ oEmbed error:", response.text)
-            return None
+        yt = YouTube(link)
+        print("✅ Successfully created YouTube object")
+        return yt.title
     except Exception as e:
+        import traceback
         print("❌ yt_title error:", e)
+        traceback.print_exc()   # <-- this prints full error details
         return None
 
 
