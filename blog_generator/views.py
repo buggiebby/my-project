@@ -128,7 +128,7 @@ def get_transcription_from_file(audio_path):
     #in the terminal
 
 from openai import OpenAI
-client = OpenAI()
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 def generate_blog_from_transcription(transcription):
     prompt = (
