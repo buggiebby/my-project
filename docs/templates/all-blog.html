@@ -28,21 +28,19 @@
             
         <h2 class="mb-2 font-semibold text-lg ">All Blog Posts</h2>
 
-        <section class="space-y-4 border border-gray-400  m-4 p-4 rounded-lg "> 
-            <h2 class="mb-2 font-semibold text-lg ">Blog Post Title 1</h2>
-            <p> This Shows your blog posts below. Ipsum Colla ninc djckdcsj dbckeuba djdsbkicae 
-                dchdin jebwdinexmn dcihibec jcbuebnxd jcbcbeownddbc wocbwiucb ekwueblwikn ejcbnlqwix
-            </p>
+        {%for article in blog_articles reversed %}
+        
+        <a href="blog_details/{{article.id}}">
+            <section class="space-y-4 border border-gray-400  m-4 p-4 rounded-lg "> 
+                <h2 class="mb-2 font-semibold text-lg ">{{article.youtube_title}}</h2>
+                <p> {{article.generated_content|truncatechars:80}}
+                </p>
 
-        </section>
+            </section>
+        </a>
 
-        <section class="space-y-4 border border-gray-400  m-4 p-4 rounded-lg "> 
-            <h2 class="mb-2 font-semibold text-lg ">Blog Post Title 2</h2>
-            <p> This Shows your blog posts below. Ipsum Colla ninc djckdcsj dbckeuba djdsbkicae 
-                dchdin jebwdinexmn dcihibec jcbuebnxd jcbcbeownddbc wocbwiucb ekwueblwikn ejcbnlqwix
-            </p>
-
-        </section>
+        {%endfor%}
+         
 
     </div>
 

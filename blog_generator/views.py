@@ -16,6 +16,7 @@ from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
 import time 
 from openai import OpenAI
 import yt_dlp
+from .models import BlogPost
 
 
 # Create your views here.
@@ -33,7 +34,7 @@ def generate_blog(request):
             yt_link = data.get("yt_link") or data.get("link")
 
             print("DEBUG received link:", yt_link)
-            # Step 0: Validate link
+            # Step 0: Validate linkhttps://chatgpt.com/g/g-KCgVk2Cjt-photo-realistic-image-and-video-generator
             if not yt_link or not YT_REGEX.match(yt_link):
                 return JsonResponse({'error': "Invalid YouTube link"}, status=400)
 
@@ -48,16 +49,30 @@ def generate_blog(request):
             if not transcription:
                 return JsonResponse({'error': "Failed to get transcript"}, status=400)
 
-            # Step 3: Generate blog with transcript only (your function only takes transcription)
+            # Step 3: Generate blog with transcript only
             blog_content = generate_blog_from_transcription(transcription)
 
-            return JsonResponse({'title': title, 'blog': blog_content}, status=200)
+            # ✅ Save blog article to database
+            new_blog_article = BlogPost.objects.create(
+                user=request.user,  # make sure the request is authenticated
+                youtube_title=title,
+                youtube_link=yt_link,
+                generated_content=blog_content,
+            )
+
+            # Return response (you can also include the new blog ID if useful)
+            return JsonResponse({
+                'title': title,
+                'blog': blog_content,
+                'blog_id': new_blog_article.id
+            }, status=200)
 
         except Exception as e:
             print("❌ Error in generate_blog:", e)
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': "Invalid request method"}, status=405)
+
     
 def yt_title(link):
     try:
@@ -171,7 +186,18 @@ def generate_blog_from_transcription(transcription):
     #generated_content=response.choices[0].text.strip()
     #return generated_content
 
-    
+def blog_list(request):
+    blog_articles=BlogPost.objects.filter(user=request.user)
+    return render(request,"all-blog.html", {'blog_articles': blog_articles})
+
+def blog_details(request, pk):
+    blog_article_detail =BlogPost.objects.get(id=pk)    
+    if request.user == blog_article_detail.user:
+        return render(request, 'blog-details.html', {'blog_article_detail': blog_article_detail})
+    else:
+        return redirect('/')
+
+
 
 def user_login(request):
     if request.method =='POST':
