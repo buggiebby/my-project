@@ -171,7 +171,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 
-ALLOWED_HOSTS= ['https://ai-blog-web.onrender.com','localhost']
+ALLOWED_HOSTS = ['ai-blog-web.onrender.com', 'localhost', '127.0.0.1']
 
 
 
