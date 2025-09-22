@@ -6,7 +6,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.conf import settings
 import json
-from pytube import YouTube
 import os
 import assemblyai as aai
 import openai
